@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    about: Ask a question or discuss of the zephpost.
+    url: https://github.com/hayatek-jp/zephpost/discussions
+

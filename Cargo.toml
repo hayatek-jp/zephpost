@@ -1,0 +1,40 @@
+[package]
+name = "zephpost"
+version = "0.1.0-alpha.0"
+authors = [
+    "KATO Hayate <dev@hayatek.jp>",
+]
+edition = "2024"
+rust-version = "1.85"
+description = "An MTA/MDA written in Rust"
+documentation = ""
+readme = "README.md"
+homepage = ""
+repository = "https://github.com/hayatek-jp/zephpost"
+license = "GPL-3.0"
+keywords = [
+    "mta",
+    "mda",
+    "smtp",
+]
+categories = [
+    "command-line-utilities",
+    "email",
+    "network-programming",
+]
+exclude = []
+publish = false
+
+[dependencies]
+
+[dev-dependencies]
+
+[features]
+default = []
+
+[profile.release]
+strip = true
+overflow-checks = true
+lto = true
+panic = "abort"
+
