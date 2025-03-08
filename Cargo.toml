@@ -26,11 +26,13 @@ exclude = []
 publish = false
 
 [dependencies]
+bpaf = { version = "0.9.18", features = ["autocomplete", "derive"] }
 
 [dev-dependencies]
 
 [features]
-default = []
+default = ["colored-cli"]
+colored-cli = ["bpaf/bright-color"]
 
 [profile.release]
 strip = true
