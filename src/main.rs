@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use bpaf::{Bpaf};
+use sysexits::ExitCode;
 
 #[derive(Debug, Clone, Bpaf)]
 #[bpaf(options, version)]
 struct Options {
 }
 
-fn main() {
+fn main() -> ExitCode {
     let args = options().run();
+    return ExitCode::Ok;
 }
 
