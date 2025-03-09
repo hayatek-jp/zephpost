@@ -28,6 +28,7 @@ publish = false
 [dependencies]
 bpaf = { version = "0.9.18", features = ["autocomplete", "derive"] }
 sysexits = "0.9.0"
+tokio = { version = "1.44.0", features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time", "tracing"] }
 
 [dev-dependencies]
 
