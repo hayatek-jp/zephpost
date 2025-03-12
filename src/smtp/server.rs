@@ -9,12 +9,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, split};
 use tokio::net::{TcpListener, TcpStream};
 
+use super::SMTPCommand;
+
 
 #[derive(Debug)]
 pub struct SMTPServer {
     is_closed: AtomicBool,
 }
-
 
 impl SMTPServer {
     pub fn new() -> Self {
@@ -55,16 +56,19 @@ impl SMTPServer {
                 println!("Received: {}", line.trim_end());
 
                 // parse SMTP commands
-                if line.trim().split(" ").collect::<Vec<_>>()[0] == "QUIT" {
-                    if let Err(e) = stream_w.write_all(b"221 Bye\r\n").await {
-                        eprintln!("Send error: {}", e);
-                    }
-                    break;
-                } else {
-                    if let Err(e) = stream_w.write_all(b"500 Error: Command not recognized\r\n").await {
-                        eprintln!("Send error: {}", e);
+                match SMTPCommand::parse(&line) {
+                    SMTPCommand::QUIT(_) => {
+                        if let Err(e) = stream_w.write_all(b"221 Bye\r\n").await {
+                            eprintln!("Send error: {}", e);
+                        }
                         break;
-                    }
+                    },
+                    _ => {
+                        if let Err(e) = stream_w.write_all(b"500 Error: Command not recognized\r\n").await {
+                            eprintln!("Send error: {}", e);
+                            break;
+                        }
+                    },
                 }
             }
         }
