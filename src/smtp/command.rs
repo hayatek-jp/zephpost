@@ -21,7 +21,8 @@ pub enum SMTPCommand {
 impl SMTPCommand {
     pub fn parse(line: &String) -> Self {
         let elm = line.trim().split(" ").collect::<Vec<_>>();
-        match elm[0] {
+        let command: &str = &elm[0].to_uppercase();
+        match command {
             "QUIT" => Self::QUIT(commands::QUIT::new()),
             _ => SMTPCommand::INVALID,
         }
