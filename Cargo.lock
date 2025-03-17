@@ -191,6 +191,7 @@ name = "zephpost"
 version = "0.1.0-alpha.0"
 dependencies = [
  "bpaf",
+ "serde",
  "sysexits",
  "toml",
 ]
