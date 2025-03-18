@@ -30,6 +30,9 @@ impl SMTPServer {
         let mut reader = BufReader::new(stream_r);
         let mut line = String::new();
 
+        // states
+        let mut helo = false;
+
         if let Err(e) = stream_w.write_all(b"220 smtp.example.com ESMTP ZephPost\r\n").await {
             eprintln!("Send error: {}", e);
         } else {
@@ -57,14 +60,29 @@ impl SMTPServer {
 
                 // parse SMTP commands
                 match SMTPCommand::parse(&line) {
+                    SMTPCommand::HELO(_) => {
+                        helo = true;
+                        if let Err(e) = stream_w.write_all(b"250 smtp.example.com\r\n").await {
+                            eprintln!("Send error: {}", e);
+                            break;
+                        }
+                    },
+                    SMTPCommand::EHLO(_) => {
+                        helo = true;
+                        if let Err(e) = stream_w.write_all(b"250 smtp.example.com\r\n").await {
+                            eprintln!("Send error: {}", e);
+                            break;
+                        }
+                    },
                     SMTPCommand::QUIT(_) => {
                         if let Err(e) = stream_w.write_all(b"221 Bye\r\n").await {
                             eprintln!("Send error: {}", e);
                         }
                         break;
                     },
-                    _ => {
-                        if let Err(e) = stream_w.write_all(b"500 Error: Command not recognized\r\n").await {
+                    SMTPCommand::Err(e) => {
+                        eprintln!("Receive error: {}", e);
+                        if let Err(e) = stream_w.write_all(format!("{}\r\n", e).as_bytes()).await {
                             eprintln!("Send error: {}", e);
                             break;
                         }
