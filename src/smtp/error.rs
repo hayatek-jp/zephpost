@@ -5,7 +5,7 @@ use thiserror::Error;
 
 
 #[derive(Debug, Error)]
-pub enum SMTPError {
+pub enum SmtpError {
     #[error("421 {0} Service not available, closing transmission channel")]
     Shutdown(String),
     #[error("500 SyntaxError: Command unrecognized")]
