@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 KATO Hayate <dev@hayatek.jp>
 // SPDX-License-Identifier: GPL-3.0-only
 
-use super::SMTPError;
+use super::SmtpError;
 use crate::utils::validate_email_address;
 
 
@@ -43,16 +43,16 @@ mod commands {
 }
 
 
-pub enum SMTPCommand {
+pub enum SmtpCommand {
     HELO(commands::HELO),
     EHLO(commands::EHLO),
     MAIL(commands::MAIL),
     NOOP,
     QUIT,
-    Err(SMTPError),
+    Err(SmtpError),
 }
 
-impl SMTPCommand {
+impl SmtpCommand {
     pub fn parse(line: &String) -> Self {
         let elm = line.trim().split(" ").collect::<Vec<_>>();
         let elm_len = elm.len();
@@ -62,19 +62,19 @@ impl SMTPCommand {
                 if elm_len == 2 {
                     Self::HELO(commands::HELO::new(elm[1].to_lowercase()))
                 } else {
-                    Self::Err(SMTPError::WrongArgument)
+                    Self::Err(SmtpError::WrongArgument)
                 }
             },
             "EHLO" => {
                 if elm_len == 2 {
                     Self::EHLO(commands::EHLO::new(elm[1].to_lowercase()))
                 } else {
-                    Self::Err(SMTPError::WrongArgument)
+                    Self::Err(SmtpError::WrongArgument)
                 }
             },
             "MAIL" => {
                 if elm_len == 1 {
-                    Self::Err(SMTPError::WrongArgument)
+                    Self::Err(SmtpError::WrongArgument)
                 } else {
                     if elm[1].to_uppercase().starts_with("FROM:<") && elm[1].ends_with(">") {
                         let from = &elm[1][6..elm[1].len() - 1];
@@ -83,19 +83,19 @@ impl SMTPCommand {
                             if elm_len == 2 {
                                 Self::MAIL(commands::MAIL::new(from.to_string()))
                             } else {
-                                Self::Err(SMTPError::UnrecognizedMAILParameter)
+                                Self::Err(SmtpError::UnrecognizedMAILParameter)
                             }
                         } else {
-                            Self::Err(SMTPError::WrongArgument)
+                            Self::Err(SmtpError::WrongArgument)
                         }
                     } else {
-                        Self::Err(SMTPError::WrongArgument)
+                        Self::Err(SmtpError::WrongArgument)
                     }
                 }
             },
             "NOOP" => Self::NOOP,
             "QUIT" => Self::QUIT,
-            _ => SMTPCommand::Err(SMTPError::UnrecognizedCommand),
+            _ => SmtpCommand::Err(SmtpError::UnrecognizedCommand),
         }
     }
 }

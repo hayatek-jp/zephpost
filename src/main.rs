@@ -9,7 +9,7 @@ use std::sync::Arc;
 use bpaf::{Bpaf};
 use sysexits::ExitCode;
 
-use crate::smtp::SMTPServer;
+use crate::smtp::SmtpServer;
 
 
 #[derive(Debug, Clone, Bpaf)]
@@ -24,7 +24,7 @@ async fn main() -> ExitCode {
     let args = options().run();
 
     // Build server
-    let server = Arc::new(SMTPServer::new());
+    let server = Arc::new(SmtpServer::new());
     // Run server
     server.run()
         .await

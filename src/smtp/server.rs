@@ -9,16 +9,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, split};
 use tokio::net::{TcpListener, TcpStream};
 
-use super::{SMTPCommand, SMTPError};
+use super::{SmtpCommand, SmtpError};
 
 
 #[derive(Debug)]
-pub struct SMTPServer {
+pub struct SmtpServer {
     is_closed: AtomicBool,
     hostname: String,
 }
 
-impl SMTPServer {
+impl SmtpServer {
     pub fn new() -> Self {
         Self {
             is_closed: AtomicBool::new(true),
@@ -50,7 +50,7 @@ impl SMTPServer {
             loop {
                 // check
                 if self.is_closed.load(Ordering::Acquire) {
-                    if let Err(_) = self.write_stream(writer, format!("{}\r\n", SMTPError::Shutdown(self.hostname.to_string()))).await { break; };
+                    if let Err(_) = self.write_stream(writer, format!("{}\r\n", SmtpError::Shutdown(self.hostname.to_string()))).await { break; };
                 }
 
                 // read line
@@ -66,32 +66,32 @@ impl SMTPServer {
                 println!("Received: {}", line.trim_end());
 
                 // parse SMTP commands
-                match SMTPCommand::parse(&line) {
-                    SMTPCommand::HELO(_) => {
+                match SmtpCommand::parse(&line) {
+                    SmtpCommand::HELO(_) => {
                         helo = true;
                         if let Err(_) = self.write_stream(writer, format!("250 {}\r\n", self.hostname)).await { break; }
                     },
-                    SMTPCommand::EHLO(_) => {
+                    SmtpCommand::EHLO(_) => {
                         helo = true;
                         if let Err(_) = self.write_stream(writer, format!("250 {}\r\n", self.hostname)).await { break; }
                     },
-                    SMTPCommand::MAIL(_) => {
+                    SmtpCommand::MAIL(_) => {
                         if helo {
                             if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
                         } else {
-                            let e = SMTPError::BadSequence;
+                            let e = SmtpError::BadSequence;
                             eprintln!("Receive error: {}", e);
                             if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
                         }
                     },
-                    SMTPCommand::NOOP => {
+                    SmtpCommand::NOOP => {
                         if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
                     },
-                    SMTPCommand::QUIT => {
+                    SmtpCommand::QUIT => {
                         let _ = self.write_stream(writer, "221 Bye\r\n").await;
                         break;
                     },
-                    SMTPCommand::Err(e) => {
+                    SmtpCommand::Err(e) => {
                         eprintln!("Receive error: {}", e);
                         if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
                     },
