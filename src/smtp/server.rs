@@ -88,18 +88,18 @@ impl SMTPServer {
                                 break;
                             }
                         }
-                    }
-                    SMTPCommand::QUIT(_) => {
-                        if let Err(e) = stream_w.write_all(b"221 Bye\r\n").await {
-                            eprintln!("Send error: {}", e);
-                        }
-                        break;
                     },
                     SMTPCommand::NOOP => {
                         if let Err(e) = stream_w.write_all(b"250 OK\r\n").await {
                             eprintln!("Send error: {}", e);
                             break;
                         }
+                    },
+                    SMTPCommand::QUIT => {
+                        if let Err(e) = stream_w.write_all(b"221 Bye\r\n").await {
+                            eprintln!("Send error: {}", e);
+                        }
+                        break;
                     },
                     SMTPCommand::Err(e) => {
                         eprintln!("Receive error: {}", e);
