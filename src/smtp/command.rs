@@ -47,6 +47,7 @@ pub enum SmtpCommand {
     HELO(commands::HELO),
     EHLO(commands::EHLO),
     MAIL(commands::MAIL),
+    RSET,
     NOOP,
     QUIT,
     Err(SmtpError),
@@ -91,6 +92,13 @@ impl SmtpCommand {
                     } else {
                         Self::Err(SmtpError::WrongArgument)
                     }
+                }
+            },
+            "RSET" => {
+                if elm_len == 1 {
+                    Self::RSET
+                } else {
+                    Self::Err(SmtpError::WrongArgument)
                 }
             },
             "NOOP" => Self::NOOP,
