@@ -80,6 +80,12 @@ impl SMTPServer {
                         }
                         break;
                     },
+                    SMTPCommand::NOOP => {
+                        if let Err(e) = stream_w.write_all(b"250 OK\r\n").await {
+                            eprintln!("Send error: {}", e);
+                            break;
+                        }
+                    },
                     SMTPCommand::Err(e) => {
                         eprintln!("Receive error: {}", e);
                         if let Err(e) = stream_w.write_all(format!("{}\r\n", e).as_bytes()).await {
