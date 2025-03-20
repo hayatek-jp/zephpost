@@ -153,6 +153,10 @@ impl SmtpServer {
                             if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
                         }
                     },
+                    SmtpCommand::RSET => {
+                        session.reset();
+                        if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
+                    },
                     SmtpCommand::NOOP => {
                         if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
                     },
