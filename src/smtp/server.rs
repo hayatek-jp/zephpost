@@ -6,7 +6,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, split};
+use tokio::io::{AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader, WriteHalf, split};
 use tokio::net::{TcpListener, TcpStream};
 
 use super::{SMTPCommand, SMTPError};
@@ -15,12 +15,24 @@ use super::{SMTPCommand, SMTPError};
 #[derive(Debug)]
 pub struct SMTPServer {
     is_closed: AtomicBool,
+    hostname: String,
 }
 
 impl SMTPServer {
     pub fn new() -> Self {
         Self {
             is_closed: AtomicBool::new(true),
+            hostname: String::from("smtp.example.com"),
+        }
+    }
+
+    async fn write_stream<T: AsyncWrite, U: AsRef<[u8]>>(&self, stream_w: &mut WriteHalf<T>, message: U) -> io::Result<()> {
+        if let Err(e) = stream_w.write_all(message.as_ref()).await {
+            // TODO: Improve error handling
+            eprintln!("Send error: {}", e);
+            Err(e)
+        } else {
+            Ok(())
         }
     }
 
@@ -28,22 +40,17 @@ impl SMTPServer {
         let addr = stream.peer_addr().unwrap();
         let (stream_r, mut stream_w) = split(stream);
         let mut reader = BufReader::new(stream_r);
+        let writer = &mut stream_w;
         let mut line = String::new();
 
         // states
         let mut helo = false;
 
-        if let Err(e) = stream_w.write_all(b"220 smtp.example.com ESMTP ZephPost\r\n").await {
-            eprintln!("Send error: {}", e);
-        } else {
-
+        if let Ok(_) = self.write_stream(writer, format!("220 {} ESMTP ZephPost\r\n", self.hostname)).await {
             loop {
                 // check
                 if self.is_closed.load(Ordering::Acquire) {
-                    if let Err(e) = stream_w.write_all(b"421 smtp.example.com Service not available, closing transmission channel\r\n").await {
-                        eprintln!("Send error: {}", e);
-                    }
-                    break;
+                    if let Err(_) = self.write_stream(writer, format!("{}\r\n", SMTPError::Shutdown(self.hostname.to_string()))).await { break; };
                 }
 
                 // read line
@@ -62,51 +69,31 @@ impl SMTPServer {
                 match SMTPCommand::parse(&line) {
                     SMTPCommand::HELO(_) => {
                         helo = true;
-                        if let Err(e) = stream_w.write_all(b"250 smtp.example.com\r\n").await {
-                            eprintln!("Send error: {}", e);
-                            break;
-                        }
+                        if let Err(_) = self.write_stream(writer, format!("250 {}\r\n", self.hostname)).await { break; }
                     },
                     SMTPCommand::EHLO(_) => {
                         helo = true;
-                        if let Err(e) = stream_w.write_all(b"250 smtp.example.com\r\n").await {
-                            eprintln!("Send error: {}", e);
-                            break;
-                        }
+                        if let Err(_) = self.write_stream(writer, format!("250 {}\r\n", self.hostname)).await { break; }
                     },
                     SMTPCommand::MAIL(_) => {
                         if helo {
-                            if let Err(e) = stream_w.write_all(b"250 OK\r\n").await {
-                                eprintln!("Send error: {}", e);
-                                break;
-                            }
+                            if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
                         } else {
                             let e = SMTPError::BadSequence;
                             eprintln!("Receive error: {}", e);
-                            if let Err(e) = stream_w.write_all(format!("{}\r\n", e).as_bytes()).await {
-                                eprintln!("Send error: {}", e);
-                                break;
-                            }
+                            if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
                         }
                     },
                     SMTPCommand::NOOP => {
-                        if let Err(e) = stream_w.write_all(b"250 OK\r\n").await {
-                            eprintln!("Send error: {}", e);
-                            break;
-                        }
+                        if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
                     },
                     SMTPCommand::QUIT => {
-                        if let Err(e) = stream_w.write_all(b"221 Bye\r\n").await {
-                            eprintln!("Send error: {}", e);
-                        }
+                        let _ = self.write_stream(writer, "221 Bye\r\n").await;
                         break;
                     },
                     SMTPCommand::Err(e) => {
                         eprintln!("Receive error: {}", e);
-                        if let Err(e) = stream_w.write_all(format!("{}\r\n", e).as_bytes()).await {
-                            eprintln!("Send error: {}", e);
-                            break;
-                        }
+                        if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
                     },
                 }
             }
