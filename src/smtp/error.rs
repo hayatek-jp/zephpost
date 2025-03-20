@@ -10,5 +10,12 @@ pub enum SMTPError {
     UnrecognizedCommand,
     #[error("501 SyntaxError: Wrong parameters or arguments")]
     WrongArgument,
+    #[error("503 LogicalError: Bad sequence of commands")]
+    BadSequence,
+    #[error("555 SyntaxError: MAIL FROM parameters unrecognized")]
+    UnrecognizedMAILParameter,
+    #[allow(dead_code)]
+    #[error("555 SyntaxError: MAIL FROM parameters not implemented")]
+    UnimplementedMAILParameter,
 }
 
