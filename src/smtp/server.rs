@@ -6,7 +6,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use tokio::io::{AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader, WriteHalf, split};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, split};
 use tokio::net::{TcpListener, TcpStream};
 
 use super::{SMTPCommand, SMTPError};
@@ -26,7 +26,7 @@ impl SMTPServer {
         }
     }
 
-    async fn write_stream<T: AsyncWrite, U: AsRef<[u8]>>(&self, stream_w: &mut WriteHalf<T>, message: U) -> io::Result<()> {
+    async fn write_stream<T: AsyncWriteExt + Unpin, U: AsRef<[u8]>>(&self, stream_w: &mut T, message: U) -> io::Result<()> {
         if let Err(e) = stream_w.write_all(message.as_ref()).await {
             // TODO: Improve error handling
             eprintln!("Send error: {}", e);
