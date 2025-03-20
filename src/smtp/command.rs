@@ -44,6 +44,7 @@ pub enum SMTPCommand {
     HELO(commands::HELO),
     EHLO(commands::EHLO),
     QUIT(commands::QUIT),
+    NOOP,
     Err(SMTPError),
 }
 
@@ -67,6 +68,7 @@ impl SMTPCommand {
                 }
             },
             "QUIT" => Self::QUIT(commands::QUIT::new()),
+            "NOOP" => Self::NOOP,
             _ => SMTPCommand::Err(SMTPError::UnrecognizedCommand),
         }
     }
