@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, split};
 use tokio::net::{TcpListener, TcpStream};
 
-use super::SMTPCommand;
+use super::{SMTPCommand, SMTPError};
 
 
 #[derive(Debug)]
@@ -74,6 +74,21 @@ impl SMTPServer {
                             break;
                         }
                     },
+                    SMTPCommand::MAIL(_) => {
+                        if helo {
+                            if let Err(e) = stream_w.write_all(b"250 OK\r\n").await {
+                                eprintln!("Send error: {}", e);
+                                break;
+                            }
+                        } else {
+                            let e = SMTPError::BadSequence;
+                            eprintln!("Receive error: {}", e);
+                            if let Err(e) = stream_w.write_all(format!("{}\r\n", e).as_bytes()).await {
+                                eprintln!("Send error: {}", e);
+                                break;
+                            }
+                        }
+                    }
                     SMTPCommand::QUIT(_) => {
                         if let Err(e) = stream_w.write_all(b"221 Bye\r\n").await {
                             eprintln!("Send error: {}", e);
