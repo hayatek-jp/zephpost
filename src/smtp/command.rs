@@ -40,16 +40,6 @@ mod commands {
             Self { from: from }
         }
     }
-
-
-    #[derive(Debug)]
-    pub struct QUIT {}
-
-    impl QUIT {
-        pub fn new() -> Self {
-            Self {}
-        }
-    }
 }
 
 
@@ -57,8 +47,8 @@ pub enum SMTPCommand {
     HELO(commands::HELO),
     EHLO(commands::EHLO),
     MAIL(commands::MAIL),
-    QUIT(commands::QUIT),
     NOOP,
+    QUIT,
     Err(SMTPError),
 }
 
@@ -103,8 +93,8 @@ impl SMTPCommand {
                     }
                 }
             },
-            "QUIT" => Self::QUIT(commands::QUIT::new()),
             "NOOP" => Self::NOOP,
+            "QUIT" => Self::QUIT,
             _ => SMTPCommand::Err(SMTPError::UnrecognizedCommand),
         }
     }
