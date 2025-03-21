@@ -49,6 +49,10 @@ impl SmtpSession {
         }
     }
 
+    pub fn is_sender_set(&self) -> bool {
+        self.sender != None
+    }
+
     pub fn get_sender(&self) -> &Option<String> {
         &self.sender
     }
@@ -66,7 +70,7 @@ impl SmtpSession {
         &self.recipients
     }
 
-    pub fn add_recipients(&mut self, recipient: String) {
+    pub fn add_recipient(&mut self, recipient: String) {
         self.recipients.push(recipient);
     }
 
@@ -146,6 +150,17 @@ impl SmtpServer {
                     SmtpCommand::MAIL(mail) => {
                         if session.is_helo_received() {
                             session.set_sender(mail.from);
+                            if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
+                        } else {
+                            let e = SmtpError::BadSequence;
+                            eprintln!("Receive error: {}", e);
+                            if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
+                        }
+                    },
+                    SmtpCommand::RCPT(rcpt) => {
+                        if session.is_helo_received() && session.is_sender_set() {
+                            // TODO: User check
+                            session.add_recipient(rcpt.to);
                             if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
                         } else {
                             let e = SmtpError::BadSequence;

@@ -14,10 +14,17 @@ pub enum SmtpError {
     WrongArgument,
     #[error("503 LogicalError: Bad sequence of commands")]
     BadSequence,
+    #[error("550 ResourceError: User unknown")]
+    UnknownUser,
     #[error("555 SyntaxError: MAIL FROM parameters unrecognized")]
     UnrecognizedMAILParameter,
     #[allow(dead_code)]
     #[error("555 SyntaxError: MAIL FROM parameters not implemented")]
     UnimplementedMAILParameter,
+    #[error("555 SyntaxError: RCPT TO parameters unrecognized")]
+    UnrecognizedRCPTParameter,
+    #[allow(dead_code)]
+    #[error("555 SyntaxError: RCPT TO parameters not implemented")]
+    UnimplementedRCPTParameter,
 }
 

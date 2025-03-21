@@ -40,6 +40,18 @@ mod commands {
             Self { from: from }
         }
     }
+
+
+    #[derive(Debug)]
+    pub struct RCPT {
+        pub to: String,
+    }
+
+    impl RCPT {
+        pub fn new(to: String) -> Self {
+            Self { to: to }
+        }
+    }
 }
 
 
@@ -47,6 +59,7 @@ pub enum SmtpCommand {
     HELO(commands::HELO),
     EHLO(commands::EHLO),
     MAIL(commands::MAIL),
+    RCPT(commands::RCPT),
     RSET,
     NOOP,
     QUIT,
@@ -80,11 +93,31 @@ impl SmtpCommand {
                     if elm[1].to_uppercase().starts_with("FROM:<") && elm[1].ends_with(">") {
                         let from = &elm[1][6..elm[1].len() - 1];
                         if validate_email_address(from) {
-                            println!("{}", from);
                             if elm_len == 2 {
                                 Self::MAIL(commands::MAIL::new(from.to_string()))
                             } else {
                                 Self::Err(SmtpError::UnrecognizedMAILParameter)
+                            }
+                        } else {
+                            Self::Err(SmtpError::WrongArgument)
+                        }
+                    } else {
+                        Self::Err(SmtpError::WrongArgument)
+                    }
+                }
+            },
+            "RCPT" => {
+                if elm_len == 1 {
+                    Self::Err(SmtpError::WrongArgument)
+                } else {
+                    if elm[1].to_uppercase().starts_with("TO:<") && elm[1].ends_with(">") {
+                        let to = &elm[1][4..elm[1].len() - 1];
+                        if validate_email_address(to) {
+                            println!("{}", to);
+                            if elm_len == 2 {
+                                Self::RCPT(commands::RCPT::new(to.to_string()))
+                            } else {
+                                Self::Err(SmtpError::UnrecognizedRCPTParameter)
                             }
                         } else {
                             Self::Err(SmtpError::WrongArgument)
