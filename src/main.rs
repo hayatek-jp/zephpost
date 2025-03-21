@@ -1,15 +1,9 @@
 // SPDX-FileCopyrightText: 2025 KATO Hayate <dev@hayatek.jp>
 // SPDX-License-Identifier: GPL-3.0-only
 
-mod smtp;
-mod utils;
-
-use std::sync::Arc;
-
 use bpaf::{Bpaf};
 use sysexits::ExitCode;
-
-use crate::smtp::SmtpServer;
+use tokio::process::Command;
 
 
 #[derive(Debug, Clone, Bpaf)]
@@ -23,12 +17,13 @@ async fn main() -> ExitCode {
     // Parse cmdline arguments
     let args = options().run();
 
-    // Build server
-    let server = Arc::new(SmtpServer::new());
-    // Run server
-    server.run()
-        .await
-        .expect("Failed to start SMTP server");
+    // components
+    let smtp = if !cfg!(debug_assertions) { "../libexec/zephpost/smtp" } else { "./target/debug/smtp" };
+
+    // Run smtp
+    Command::new(smtp).spawn().unwrap();
+
+    loop {}
 
     return ExitCode::Ok;
 }

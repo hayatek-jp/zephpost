@@ -24,6 +24,7 @@ categories = [
 ]
 exclude = []
 publish = false
+default-run = "zephpost"
 
 [dependencies]
 bpaf = { version = "0.9.18", features = ["autocomplete", "derive"] }

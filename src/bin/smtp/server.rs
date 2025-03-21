@@ -9,7 +9,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, split};
 use tokio::net::{TcpListener, TcpStream};
 
-use super::{SmtpCommand, SmtpError};
+use crate::command::SmtpCommand;
+use crate::error::SmtpError;
 
 
 #[derive(Debug)]
