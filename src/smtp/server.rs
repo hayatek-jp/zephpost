@@ -18,6 +18,7 @@ struct SmtpSession {
     sender: Option<String>,
     recipients: Vec<String>,
     data: String,
+    data_mode: bool,
 }
 
 impl SmtpSession {
@@ -27,6 +28,7 @@ impl SmtpSession {
             sender: None,
             recipients: Vec::new(),
             data: String::new(),
+            data_mode: false,
         }
     }
 
@@ -66,6 +68,10 @@ impl SmtpSession {
         }
     }
 
+    pub fn is_recipients_added(&self) -> bool {
+        !self.recipients.is_empty()
+    }
+
     pub fn get_recipients(&self) -> &Vec<String> {
         &self.recipients
     }
@@ -80,6 +86,14 @@ impl SmtpSession {
 
     pub fn append_data(&mut self, buf: &str) {
         self.data.push_str(buf);
+    }
+
+    pub fn is_data_mode(&self) -> bool {
+        self.data_mode
+    }
+
+    pub fn set_data_mode(&mut self, flag: bool) {
+        self.data_mode = flag;
     }
 }
 
@@ -96,6 +110,11 @@ impl SmtpServer {
             is_closed: AtomicBool::new(true),
             hostname: String::from("smtp.example.com"),
         }
+    }
+
+    async fn deliver(&self, session: SmtpSession) -> io::Result<()> {
+        // TODO: Implement this
+        Ok(())
     }
 
     async fn write_stream<T: AsyncWriteExt + Unpin, U: AsRef<[u8]>>(&self, stream_w: &mut T, message: U) -> io::Result<()> {
@@ -137,52 +156,78 @@ impl SmtpServer {
                 };
                 println!("Received: {}", line.trim_end());
 
-                // parse SMTP commands
-                match SmtpCommand::parse(&line) {
-                    SmtpCommand::HELO(_) => {
-                        session.set_helo_received();
-                        if let Err(_) = self.write_stream(writer, format!("250 {}\r\n", self.hostname)).await { break; }
-                    },
-                    SmtpCommand::EHLO(_) => {
-                        session.set_helo_received();
-                        if let Err(_) = self.write_stream(writer, format!("250 {}\r\n", self.hostname)).await { break; }
-                    },
-                    SmtpCommand::MAIL(mail) => {
-                        if session.is_helo_received() {
-                            session.set_sender(mail.from);
-                            if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
+                if session.is_data_mode() {
+                    if line == ".\r\n" {
+                        session.set_data_mode(false);
+                        if let Err(e) = self.deliver(session).await {
+                            todo!();
                         } else {
-                            let e = SmtpError::BadSequence;
+                            session = SmtpSession::new();
+                            session.set_helo_received();
+                            if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
+                        }
+                    } else {
+                        // TODO: Check headers
+                        session.append_data(&line.replace("\r\n", "\n"));
+                    }
+                } else {
+                    // parse SMTP commands
+                    match SmtpCommand::parse(&line) {
+                        SmtpCommand::HELO(_) => {
+                            session.set_helo_received();
+                            if let Err(_) = self.write_stream(writer, format!("250 {}\r\n", self.hostname)).await { break; }
+                        },
+                        SmtpCommand::EHLO(_) => {
+                            session.set_helo_received();
+                            if let Err(_) = self.write_stream(writer, format!("250 {}\r\n", self.hostname)).await { break; }
+                        },
+                        SmtpCommand::MAIL(mail) => {
+                            if session.is_helo_received() {
+                                session.set_sender(mail.from);
+                                if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
+                            } else {
+                                let e = SmtpError::BadSequence;
+                                eprintln!("Receive error: {}", e);
+                                if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
+                            }
+                        },
+                        SmtpCommand::RCPT(rcpt) => {
+                            if session.is_sender_set() {
+                                // TODO: User check
+                                session.add_recipient(rcpt.to);
+                                if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
+                            } else {
+                                let e = SmtpError::BadSequence;
+                                eprintln!("Receive error: {}", e);
+                                if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
+                            }
+                        },
+                        SmtpCommand::DATA => {
+                            if session.is_recipients_added() {
+                                session.set_data_mode(true);
+                                if let Err(_) = self.write_stream(writer, "354 Start mail input; end with <CRLF>.<CRLF>\r\n").await { break; }
+                            } else {
+                                let e = SmtpError::BadSequence;
+                                eprintln!("Receive error: {}", e);
+                                if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
+                            }
+                        },
+                        SmtpCommand::RSET => {
+                            session.reset();
+                            if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
+                        },
+                        SmtpCommand::NOOP => {
+                            if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
+                        },
+                        SmtpCommand::QUIT => {
+                            let _ = self.write_stream(writer, "221 Bye\r\n").await;
+                            break;
+                        },
+                        SmtpCommand::Err(e) => {
                             eprintln!("Receive error: {}", e);
                             if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
-                        }
-                    },
-                    SmtpCommand::RCPT(rcpt) => {
-                        if session.is_helo_received() && session.is_sender_set() {
-                            // TODO: User check
-                            session.add_recipient(rcpt.to);
-                            if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
-                        } else {
-                            let e = SmtpError::BadSequence;
-                            eprintln!("Receive error: {}", e);
-                            if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
-                        }
-                    },
-                    SmtpCommand::RSET => {
-                        session.reset();
-                        if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
-                    },
-                    SmtpCommand::NOOP => {
-                        if let Err(_) = self.write_stream(writer, "250 OK\r\n").await { break; }
-                    },
-                    SmtpCommand::QUIT => {
-                        let _ = self.write_stream(writer, "221 Bye\r\n").await;
-                        break;
-                    },
-                    SmtpCommand::Err(e) => {
-                        eprintln!("Receive error: {}", e);
-                        if let Err(_) = self.write_stream(writer, format!("{}\r\n", e)).await { break; }
-                    },
+                        },
+                    }
                 }
             }
         }
